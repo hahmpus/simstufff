@@ -2,13 +2,14 @@ import { constants } from "./main";
 import { distanceBetween, Vector, subtractVectors, vectorMagnitude } from "./vector";
 
 
-const GRAVITY = 9;
+const GRAVITY = 9.82;
 const COLLISION_DAMPING = 0.9;
-const SMOOTHING_RADIUS = 10;
+const SMOOTHING_RADIUS = 100;
 const TARGET_DENSITY = 1;
 const PRESSURE_MULTIPLIER = 1;
-const PARTICLE_RADIUS = 2;
 const PARTICLE_MASS = 1;
+
+const PARTICLE_RADIUS = 5;
 
 export class Fluid {
 
@@ -37,9 +38,8 @@ export class Fluid {
             }
         }
 
-        //gravity and density calculation
+        //density calculation
         for(let i = 0; i < this.numberOfParticles; i++) {
-            //this.particleVelocities[i].y += GRAVITY;
             this.particleDensities[i] = this.calculateDensity(i);
         }
 
@@ -59,21 +59,44 @@ export class Fluid {
             this.particlePositions[i].y += this.particleVelocities[i].y;
             this.checkCanvasBounds(i);
 
-            this.drawParticle(ctx, this.particlePositions[i], "orange");
+            this.drawParticle(ctx, i);
         }
 
     }
 
-    private drawParticle(ctx: CanvasRenderingContext2D, position: Vector, color: string = "white") {
+    private drawParticle(ctx: CanvasRenderingContext2D, index: number) {
+        let vector = this.particlePositions[index];
         if (ctx != null) {
             ctx.save();
             ctx.globalAlpha = 1;
             ctx.beginPath();
-            ctx.fillStyle = color;
-            ctx.arc(position.x, position.y, PARTICLE_RADIUS, 0, 2 * Math.PI);
+            ctx.fillStyle = this.speedBasedColor(index);
+            ctx.arc(vector.x, vector.y, PARTICLE_RADIUS, 0, 2 * Math.PI);
             ctx.fill();
             ctx.restore();
         }
+    }
+
+    private speedBasedColor(index: number) {
+        let vector = this.particleVelocities[index];
+        let speed = vectorMagnitude(vector);
+        let color = "white";
+        if(speed > 0.5) {
+            color = "red";
+        } else if(speed > 0.25) {
+            color = "orange";
+        } else if(speed > 0.1) {
+            color = "yellow";
+        } else if(speed > 0.05) {
+            color = "green";
+        } else if(speed > 0.01) {
+            color = "blue";
+        } else if(speed > 0.005) {
+            color = "purple";
+        } else if(speed > 0.001) {
+            color = "pink";
+        }
+        return color;
     }
 
     //GRID
