@@ -1,12 +1,16 @@
+import chroma from "chroma-js";
 import { constants } from "./main";
-import { distanceBetween, Vector, subtractVectors, vectorMagnitude } from "./vector";
+import { Vector, subtractVectors, vectorMagnitude } from "./vector";
 
+const SpeedColorGradient = chroma.scale(['#3498db', '#f1c40f', '#c0392b'])
+    .mode('lrgb')
+    //.domain([0,0.25,1]);
 
-const GRAVITY = 0.982;
-const COLLISION_DAMPING = 0.9;
-const SMOOTHING_RADIUS = 100;
+const GRAVITY = 0;
+const COLLISION_DAMPING = 0.5;
+const SMOOTHING_RADIUS = 50;
 const TARGET_DENSITY = 1;
-const PRESSURE_MULTIPLIER = 1;
+const PRESSURE_MULTIPLIER = 5;
 const PARTICLE_MASS = 1;
 
 const PARTICLE_RADIUS = 5;
@@ -27,12 +31,11 @@ export class Fluid {
     }
 
     //RENDERING
-    public renderLoop(ctx: CanvasRenderingContext2D) {
-
+    public renderLoop(ctx: CanvasRenderingContext2D, deltaTime: number) {
         //initialize particles
         if(this.particlePositions.length == 0) {
             for(let i = 0; i < this.numberOfParticles; i++) {
-                this.particlePositions.push({x: Math.random() *constants.canvasWidth, y: Math.random() * constants.canvasHeight});
+                this.particlePositions.push({x: Math.random() * constants.canvasWidth / 4, y: Math.random() * constants.canvasHeight});
                 this.particleVelocities.push({x: 0, y: 0});
                 this.particleDensities.push(0);
             }
@@ -49,8 +52,8 @@ export class Fluid {
             let pressureAccelerationX = pressureForce.x / this.particleDensities[i];
             let pressureAccelerationY = pressureForce.y / this.particleDensities[i];
             
-            this.particleVelocities[i].x = pressureAccelerationX;
-            this.particleVelocities[i].y = pressureAccelerationY;
+            this.particleVelocities[i].x += pressureAccelerationX * deltaTime;
+            this.particleVelocities[i].y += (pressureAccelerationY * deltaTime) + (GRAVITY * deltaTime);
         }
 
         //update positions and check bounds
@@ -79,26 +82,9 @@ export class Fluid {
 
     private speedBasedColor(index: number) {
         let vector = this.particleVelocities[index];
-        let speed = vectorMagnitude(vector);
-        let color = "white";
-        if(speed > 0.5) {
-            color = "red";
-        } else if(speed > 0.25) {
-            color = "orange";
-        } else if(speed > 0.1) {
-            color = "yellow";
-        } else if(speed > 0.05) {
-            color = "green";
-        } else if(speed > 0.01) {
-            color = "blue";
-        } else if(speed > 0.005) {
-            color = "purple";
-        } else if(speed > 0.001) {
-            color = "pink";
-        }
-        return color;
+        let speed = vectorMagnitude(vector) / 2;
+        return SpeedColorGradient(speed).hex();
     }
-
     //GRID
     private neighborSearch(particle: Vector) {
         let cellCoord = this.getCellCoord(particle, SMOOTHING_RADIUS);

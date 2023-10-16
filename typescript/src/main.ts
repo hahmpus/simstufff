@@ -2,7 +2,7 @@ import './style.css';
 //import {Fluid} from './fluid';
 import { Fluid } from './fluid';
 
-var fluid = new Fluid(1500);
+var fluid = new Fluid(100);
 
 var canvas: HTMLCanvasElement;
 var ctx: CanvasRenderingContext2D;
@@ -21,6 +21,21 @@ window.onload = () => {
 
 }
 
+var lastTimestamp = 0; 
+function loop() {
+  let now = performance.now();
+  let deltaTime = (now - lastTimestamp) / 1000;
+  lastTimestamp = now;
+  requestAnimationFrame(loop);
+  if(ctx) {
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, width, height);
+  
+    fluid.renderLoop(ctx, deltaTime);
+  }
+}
+
+
 function setupCanvas() {
   let container = document.createElement('div');
   container.id = "container";
@@ -38,12 +53,3 @@ function setupCanvas() {
   ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 }
 
-function loop() {
-  if(ctx) {
-    requestAnimationFrame(loop);
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, width, height);
-  
-    fluid.renderLoop(ctx);
-  }
-}
