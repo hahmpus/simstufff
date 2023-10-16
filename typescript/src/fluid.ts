@@ -2,7 +2,7 @@ import { constants } from "./main";
 import { distanceBetween, Vector, subtractVectors, vectorMagnitude } from "./vector";
 
 
-const GRAVITY = 9.82;
+const GRAVITY = 0.982;
 const COLLISION_DAMPING = 0.9;
 const SMOOTHING_RADIUS = 100;
 const TARGET_DENSITY = 1;
@@ -133,13 +133,13 @@ export class Fluid {
         return {x: x, y: y};
     }
 
-    private hashCell(cell: Vector) {
+    private hashCell(cell: Vector): number {
         let a = cell.x * 15823;
         let b = cell.y * 9737333;
         return a + b;
     }
 
-    private convertHashToKey(hash: number) {
+    private convertHashToKey(hash: number): number {
         return hash % this.gridSpatialLookup.length;
     }
 
@@ -147,7 +147,7 @@ export class Fluid {
 
 
     //PHYSICS 
-    private checkCanvasBounds(index: number) {
+    private checkCanvasBounds(index: number): void {
         //x
         if (this.particlePositions[index].x < 0 + PARTICLE_RADIUS) {
             this.particlePositions[index].x = 0 + PARTICLE_RADIUS;
@@ -167,21 +167,20 @@ export class Fluid {
     }
 
     //magic numbers
-    private smoothingKernel(distance: number, radius: number) {
+    private smoothingKernel(distance: number, radius: number): number {
         if(distance >= radius) return 0;
         let volume: number = (Math.PI * Math.pow(radius, 4)) / 6;
         return (radius - distance) * (radius - distance) / volume;
     }
 
     //magic derivative numbers
-    private smoothingKernelDerivative(distance: number, radius: number) {
+    private smoothingKernelDerivative(distance: number, radius: number): number {
         if(distance >= radius) return 0;
         let scale = 12 / (Math.PI * Math.pow(radius, 4));
         return (distance - radius) * scale;
     }
 
-    private calculateDensity(index: number) {
-
+    private calculateDensity(index: number): number {
         let density = 0;
 
         for(let otherIndex = 0; otherIndex < this.numberOfParticles; otherIndex++) {
@@ -194,19 +193,19 @@ export class Fluid {
         return density;
     }
 
-    private convertDensityToPressure(density: number) {
+    private convertDensityToPressure(density: number): number {
         let densityError = density - TARGET_DENSITY;
         let pressure = densityError * PRESSURE_MULTIPLIER;
         return pressure;
     }
 
-    private calculateSharedPressure(densityA: number, densityB: number) {
+    private calculateSharedPressure(densityA: number, densityB: number): number {
         let pressureA = this.convertDensityToPressure(densityA);
         let pressureB = this.convertDensityToPressure(densityB);
         return (pressureA + pressureB) / 2;
     }
 
-    private calculatePressureForce(index: number) {
+    private calculatePressureForce(index: number): Vector {
 
         let pressureForce = {x: 0, y: 0};
 

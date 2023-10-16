@@ -2,7 +2,7 @@ import './style.css';
 //import {Fluid} from './fluid';
 import { Fluid } from './fluid';
 
-var fluid = new Fluid(1000);
+var fluid = new Fluid(1500);
 
 var canvas: HTMLCanvasElement;
 var ctx: CanvasRenderingContext2D;
