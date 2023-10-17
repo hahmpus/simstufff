@@ -2,7 +2,7 @@ import './style.css';
 //import {Fluid} from './fluid';
 import { Fluid } from './fluid';
 
-var fluid = new Fluid(5);
+var fluid = new Fluid(500);
 
 var canvas: HTMLCanvasElement;
 var ctx: CanvasRenderingContext2D;
@@ -28,10 +28,10 @@ function loop() {
   lastTimestamp = now;
   requestAnimationFrame(loop);
   if(ctx) {
-    ctx.fillStyle = "white";
+    ctx.fillStyle = "black";
     ctx.fillRect(0, 0, width, height);
   
-    fluid.renderLoop(ctx, deltaTime);
+    fluid.runFrame(ctx, deltaTime);
   }
 }
 

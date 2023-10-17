@@ -10,11 +10,12 @@ const SpeedColorGradient = chroma.scale(['#2980b9', '#27ae60', '#f1c40f', '#c039
 const GRAVITY = 0;
 const COLLISION_DAMPING = 0.95;
 const SMOOTHING_RADIUS = 25;
-const TARGET_DENSITY = 2;
-const PRESSURE_MULTIPLIER = 2;
-const PARTICLE_MASS = 1;
+const TARGET_DENSITY = 1;
+const PRESSURE_MULTIPLIER = 1;
 
-const PARTICLE_RADIUS = 3;
+const PARTICLE_RADIUS = 4;
+
+const SIMULATIONS_PER_FRAME = 1;
 
 
 
@@ -38,11 +39,20 @@ export class Fluid {
     }
 
     //RENDERING
-    public renderLoop(ctx: CanvasRenderingContext2D, deltaTime: number) {
+    public runFrame(ctx: CanvasRenderingContext2D, deltaTime: number) {
+        for(let i = 0; i < SIMULATIONS_PER_FRAME; i++) {
+            this.simulationStep(ctx, deltaTime);
+        }
+        for(let i = 0; i < this.numberOfParticles; i++) {
+            this.drawParticle(ctx, i);
+        }
+    }
+
+    public simulationStep(ctx: CanvasRenderingContext2D, deltaTime: number) {
         //initialize particles
         if(this.particlePositions.length == 0) {
             for(let i = 0; i < this.numberOfParticles; i++) {
-                this.particlePositions.push({x: Math.random() * constants.canvasWidth / 4, y: Math.random() * constants.canvasHeight});
+                this.particlePositions.push({x: Math.random() * constants.canvasWidth, y: Math.random() * constants.canvasHeight});
                 this.particleVelocities.push({x: 0, y: 0});
                 this.particleDensities.push(0);
             }
@@ -66,11 +76,11 @@ export class Fluid {
             // this.particleDensities.push(0);
         }
 
+ 
         //apply gravity and predict
         for(let i = 0; i < this.numberOfParticles; i++) {
-            this.particleVelocities[i].y += GRAVITY * deltaTime;
+            //this.particleVelocities[i].y += GRAVITY * deltaTime;
             let predicted = addVectors(this.particlePositions[i], this.particleVelocities[i]);
-            this.preticedPositions[i] = {x: predicted.x * deltaTime, y: predicted.y * deltaTime};
             this.preticedPositions[i] = {x: predicted.x * (1 / 120), y: predicted.y * (1 / 120)};
         }
 
@@ -86,8 +96,8 @@ export class Fluid {
             let pressureAccelerationX = pressureForce.x / this.particleDensities[i];
             let pressureAccelerationY = pressureForce.y / this.particleDensities[i];
             
-            this.particleVelocities[i].x += pressureAccelerationX * deltaTime;
-            this.particleVelocities[i].y += pressureAccelerationY * deltaTime;
+            this.particleVelocities[i].x += pressureAccelerationX * deltaTime / SIMULATIONS_PER_FRAME;
+            this.particleVelocities[i].y += (pressureAccelerationY * deltaTime / SIMULATIONS_PER_FRAME) + (GRAVITY * deltaTime / SIMULATIONS_PER_FRAME);
         }
 
         //update positions and check bounds
@@ -95,8 +105,6 @@ export class Fluid {
             this.particlePositions[i].x += this.particleVelocities[i].x;
             this.particlePositions[i].y += this.particleVelocities[i].y;
             this.checkCanvasBounds(i);
-
-            this.drawParticle(ctx, i);
         }
 
     }
@@ -119,51 +127,8 @@ export class Fluid {
         let speed = vectorMagnitude(vector) / 10;
         return SpeedColorGradient(speed).hex();
     }
+
     //GRID
-    private neighborSearch(particle: Vector) {
-        let cellCoord = this.getCellCoord(particle, SMOOTHING_RADIUS);
-        let radiusSquared = SMOOTHING_RADIUS * SMOOTHING_RADIUS;
-    }
-
-    private updateGridLookup(points: Array<Vector>, radius: number) {
-
-        for(let i = 0; i < points.length; i++) {
-            let cell = this.getCellCoord(points[i], radius);
-            let hash = this.hashCell(cell);
-            let key = this.convertHashToKey(hash);
-            this.gridSpatialLookup[i] = key;
-            this.gridStartIndices[i] = Number.MAX_SAFE_INTEGER;
-        }
-
-        this.gridSpatialLookup.sort();
-
-        for(let i = 0; i < points.length; i++) {
-            let key = this.gridSpatialLookup[i];
-            let prevKey = i == 0 ? Number.MAX_SAFE_INTEGER : this.gridSpatialLookup[i - 1];
-            if(key != prevKey) {
-                this.gridStartIndices[key] = i;
-            }
-        }
-
-    }
-
-    private getCellCoord(point: Vector, radius: number): Vector {
-        let x = Math.floor(point.x / radius);
-        let y = Math.floor(point.y / radius);
-        return {x: x, y: y};
-    }
-
-    private hashCell(cell: Vector): number {
-        let a = cell.x * 15823;
-        let b = cell.y * 9737333;
-        return a + b;
-    }
-
-    private convertHashToKey(hash: number): number {
-        return hash % this.gridSpatialLookup.length;
-    }
-
-  
 
 
     //PHYSICS 
@@ -188,19 +153,24 @@ export class Fluid {
 
     //magic numbers
     private smoothingKernel(distance: number, radius: number): number {
-        if(distance >= radius) return 0;
-        let volume: number = (Math.PI * Math.pow(radius, 4)) / 6;
-        return (radius - distance) * (radius - distance) / volume;
-        // let volume = Math.PI * Math.pow(radius, 8) / 4;
-        // let value = Math.max(0, radius * radius - distance * distance);
-        // return value * value * value / volume;
+        if (distance < radius)
+        {
+            const SpikyPow2ScalingFactor = 6 / (Math.PI * Math.pow(radius, 4));
+            let v:number = radius - distance;
+            return v * v * SpikyPow2ScalingFactor;
+        }
+        return 0;
     }
 
     //magic derivative numbers
     private smoothingKernelDerivative(distance: number, radius: number): number {
-        if(distance >= radius) return 0;
-        let scale = 12 / (Math.PI * Math.pow(radius, 4));
-        return (distance - radius) * scale;
+        if (distance <= radius)
+        {
+            const SpikyPow2DerivativeScalingFactor = -12 / (Math.pow(radius, 4) * Math.PI);
+            let v:number = radius - distance;
+            return v * SpikyPow2DerivativeScalingFactor;
+        }
+        return 0;
     }
 
     private calculateDensity(particle: Vector): number {
@@ -210,7 +180,7 @@ export class Fluid {
             let offset = subtractVectors(particle, this.particlePositions[otherIndex]);
             let distance = vectorMagnitude(offset);
             let influence = this.smoothingKernel(distance, SMOOTHING_RADIUS);
-            density += PARTICLE_MASS * influence;
+            density += influence;
         }
 
         return density;
@@ -229,7 +199,6 @@ export class Fluid {
     }
 
     private calculatePressureForce(index: number): Vector {
-
 
         let pressureForce = {x: 0, y: 0};
 
@@ -257,8 +226,8 @@ export class Fluid {
             index == 0 && console.log("index", index, density);
             //log all vars
             
-            pressureForce.x += sharedPressure * direction.x * slope * PARTICLE_MASS / density;
-            pressureForce.y += sharedPressure * direction.y * slope * PARTICLE_MASS / density;
+            pressureForce.x += sharedPressure * direction.x * slope / density;
+            pressureForce.y += sharedPressure * direction.y * slope / density;
             // if(index == 1) {
             //     console.log("index", otherIndex);
             //     console.log("offset", offset);
