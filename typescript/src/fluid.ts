@@ -7,15 +7,15 @@ const SpeedColorGradient = chroma.scale(['#2980b9', '#27ae60', '#f1c40f', '#c039
     .mode('lrgb')
     //.domain([0,0.25,1]);
 
-const GRAVITY = 0;
-const COLLISION_DAMPING = 0.95;
+const GRAVITY = 9;
+const COLLISION_DAMPING = 0.9;
 const SMOOTHING_RADIUS = 25;
 const TARGET_DENSITY = 1;
-const PRESSURE_MULTIPLIER = 1;
+const PRESSURE_MULTIPLIER = 25;
 
-const PARTICLE_RADIUS = 4;
-
-const SIMULATIONS_PER_FRAME = 1;
+const PARTICLE_RADIUS = 3;
+const SIMULATIONS_PER_FRAME = 5;
+const PREDICTION_FACTOR = 1 / SIMULATIONS_PER_FRAME;
 
 
 
@@ -26,7 +26,7 @@ export class Fluid {
 
     //constants
     private particlePositions:  Array<Vector> = [];
-    private preticedPositions:  Array<Vector> = [];
+    private predictedPositions: Array<Vector> = [];
     private particleVelocities: Array<Vector> = [];
     private particleDensities:  Array<number> = [];
 
@@ -41,10 +41,12 @@ export class Fluid {
     //RENDERING
     public runFrame(ctx: CanvasRenderingContext2D, deltaTime: number) {
         for(let i = 0; i < SIMULATIONS_PER_FRAME; i++) {
-            this.simulationStep(ctx, deltaTime);
+            this.simulationStep(ctx, deltaTime / SIMULATIONS_PER_FRAME);
         }
         for(let i = 0; i < this.numberOfParticles; i++) {
             this.drawParticle(ctx, i);
+            //this.drawGradient(ctx, i);
+            //this.drawDirection(ctx, i);
         }
     }
 
@@ -79,14 +81,15 @@ export class Fluid {
  
         //apply gravity and predict
         for(let i = 0; i < this.numberOfParticles; i++) {
-            //this.particleVelocities[i].y += GRAVITY * deltaTime;
-            let predicted = addVectors(this.particlePositions[i], this.particleVelocities[i]);
-            this.preticedPositions[i] = {x: predicted.x * (1 / 120), y: predicted.y * (1 / 120)};
+            let velocity = this.particleVelocities[i];
+            let future: Vector = {x: velocity.x * PREDICTION_FACTOR, y: velocity.y * PREDICTION_FACTOR};
+            let predicted = addVectors(this.particlePositions[i], future);
+            this.predictedPositions[i] = {x: predicted.x, y: predicted.y};
         }
 
         //density calculation
         for(let i = 0; i < this.numberOfParticles; i++) {
-            this.particleDensities[i] = this.calculateDensity(this.particlePositions[i]);
+            this.particleDensities[i] = this.calculateDensity(this.predictedPositions[i]);
         }
 
         //pressure calculation
@@ -96,8 +99,8 @@ export class Fluid {
             let pressureAccelerationX = pressureForce.x / this.particleDensities[i];
             let pressureAccelerationY = pressureForce.y / this.particleDensities[i];
             
-            this.particleVelocities[i].x += pressureAccelerationX * deltaTime / SIMULATIONS_PER_FRAME;
-            this.particleVelocities[i].y += (pressureAccelerationY * deltaTime / SIMULATIONS_PER_FRAME) + (GRAVITY * deltaTime / SIMULATIONS_PER_FRAME);
+            this.particleVelocities[i].x += pressureAccelerationX * deltaTime;
+            this.particleVelocities[i].y += (pressureAccelerationY * deltaTime) + (GRAVITY * deltaTime);
         }
 
         //update positions and check bounds
@@ -122,9 +125,41 @@ export class Fluid {
         }
     }
 
+    private drawGradient(ctx: CanvasRenderingContext2D, index: number) {
+        let vector = this.particlePositions[index];
+        if (ctx != null) {
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.beginPath();
+            ctx.fillStyle = "rgba(127, 0, 127, 0.1)";
+            ctx.arc(vector.x, vector.y, SMOOTHING_RADIUS, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    private drawDirection(ctx: CanvasRenderingContext2D, index: number) {
+        //position, and predicted position and draw line betwenn them
+        //draw as a trianglepointing at the next position
+        let vector = this.particlePositions[index];
+        // let speed = this.particleVelocities[index];
+        // let next = addVectors(vector, speed);
+        let next = this.predictedPositions[index];
+        if (ctx != null) {
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.beginPath();
+            ctx.strokeStyle = "white";
+            ctx.moveTo(vector.x, vector.y);
+            ctx.lineTo(next.x, next.y);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
     private speedBasedColor(index: number) {
         let vector = this.particleVelocities[index];
-        let speed = vectorMagnitude(vector) / 10;
+        let speed = vectorMagnitude(vector) / 4;
         return SpeedColorGradient(speed).hex();
     }
 
@@ -177,7 +212,7 @@ export class Fluid {
         let density = 0;
 
         for(let otherIndex = 0; otherIndex < this.numberOfParticles; otherIndex++) {
-            let offset = subtractVectors(particle, this.particlePositions[otherIndex]);
+            let offset = subtractVectors(particle, this.predictedPositions[otherIndex]);
             let distance = vectorMagnitude(offset);
             let influence = this.smoothingKernel(distance, SMOOTHING_RADIUS);
             density += influence;
@@ -205,10 +240,8 @@ export class Fluid {
         for(let otherIndex = 0; otherIndex < this.numberOfParticles; otherIndex++) {
             if(otherIndex == index) continue;
 
-            let offset = subtractVectors(this.particlePositions[index], this.particlePositions[otherIndex]);
+            let offset = subtractVectors(this.predictedPositions[index], this.predictedPositions[otherIndex]);
             let distance = vectorMagnitude(offset);
-
-            //index == 1 && console.log(distance, offset);
 
             let direction = {x: 0, y: 0};
             if(distance != 0) {
@@ -216,31 +249,14 @@ export class Fluid {
             } else {
                 direction = {x: Math.random(), y: Math.random()};
             }
-            
-            //index == 1 && console.log(direction);
 
             let slope = this.smoothingKernelDerivative(distance, SMOOTHING_RADIUS);
             let density = this.particleDensities[otherIndex];
             let sharedPressure = this.calculateSharedPressure(density, this.particleDensities[index]);
-
-            index == 0 && console.log("index", index, density);
-            //log all vars
             
             pressureForce.x += sharedPressure * direction.x * slope / density;
             pressureForce.y += sharedPressure * direction.y * slope / density;
-            // if(index == 1) {
-            //     console.log("index", otherIndex);
-            //     console.log("offset", offset);
-            //     console.log("distance", distance);
-            //     console.log("direction", direction);
-            //     console.log("slope", slope);
-            //     console.log("density", density);
-            //     console.log("sharedPressure", sharedPressure);
-            //     console.log("pressureForce", pressureForce);
-            // }
         }
-
-        //index == 0 && console.log("pressureForce for ", index, pressureForce);
 
         return pressureForce;
     }   

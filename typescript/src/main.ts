@@ -6,8 +6,8 @@ var fluid = new Fluid(500);
 
 var canvas: HTMLCanvasElement;
 var ctx: CanvasRenderingContext2D;
-let width =  600;
-let height = 600;
+let width =  1280;
+let height = 720;
 
 export const constants = {
   canvasWidth: width,
