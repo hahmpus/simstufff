@@ -5,13 +5,13 @@ import { Vector, subtractVectors, addVectors, vectorMagnitude } from "./vector";
 
 const SpeedColorGradient = chroma.scale(['#2980b9', '#27ae60', '#f1c40f', '#c0392b'])
     .mode('lrgb')
-    //.domain([0,0.25,1]);
+    //.domain([0, 0.25, 0.25, 1]);
 
 const GRAVITY = 9;
 const COLLISION_DAMPING = 0.9;
-const SMOOTHING_RADIUS = 25;
-const TARGET_DENSITY = 1;
-const PRESSURE_MULTIPLIER = 25;
+const SMOOTHING_RADIUS = 20;
+const TARGET_DENSITY = 2;
+const PRESSURE_MULTIPLIER = 10;
 
 const PARTICLE_RADIUS = 3;
 const SIMULATIONS_PER_FRAME = 5;
@@ -24,7 +24,7 @@ export class Fluid {
     //particles
     private numberOfParticles: number = 0;
 
-    //constants
+    //particle data
     private particlePositions:  Array<Vector> = [];
     private predictedPositions: Array<Vector> = [];
     private particleVelocities: Array<Vector> = [];
@@ -33,6 +33,11 @@ export class Fluid {
     //optimization
     private gridSpatialLookup: Array<number> = [];
     private gridStartIndices: Array<number> = [];
+    private gridOffsets: Array<Vector> = [
+        {x: -SMOOTHING_RADIUS, y: -SMOOTHING_RADIUS}, {x: 0, y: -SMOOTHING_RADIUS}, {x: SMOOTHING_RADIUS, y: -SMOOTHING_RADIUS},
+        {x: -SMOOTHING_RADIUS, y: 0},                 {x: 0, y: 0},                 {x: SMOOTHING_RADIUS, y: 0},
+        {x: -SMOOTHING_RADIUS, y: SMOOTHING_RADIUS }, {x: 0, y: SMOOTHING_RADIUS }, {x: SMOOTHING_RADIUS, y: SMOOTHING_RADIUS }
+    ];
 
     constructor(amount: number) {
         this.numberOfParticles = amount;
@@ -45,7 +50,7 @@ export class Fluid {
         }
         for(let i = 0; i < this.numberOfParticles; i++) {
             this.drawParticle(ctx, i);
-            //this.drawGradient(ctx, i);
+            this.drawGradient(ctx, i);
             //this.drawDirection(ctx, i);
         }
     }
@@ -58,34 +63,18 @@ export class Fluid {
                 this.particleVelocities.push({x: 0, y: 0});
                 this.particleDensities.push(0);
             }
-
-            //add two static particles
-            // this.particlePositions.push({x: 500, y: 500});
-            // this.particleVelocities.push({x: 0, y: 0});
-            // this.particleDensities.push(0);
-            
-            // this.particlePositions.push({x: 480, y: 500});
-            // this.particleVelocities.push({x: 0, y: 0});
-            // this.particleDensities.push(0);
-            // this.particlePositions.push({x: 500, y: 480});
-            // this.particleVelocities.push({x: 0, y: 0});
-            // this.particleDensities.push(0);
-            // this.particlePositions.push({x: 520, y: 500});
-            // this.particleVelocities.push({x: 0, y: 0});
-            // this.particleDensities.push(0);
-            // this.particlePositions.push({x: 500, y: 520});
-            // this.particleVelocities.push({x: 0, y: 0});
-            // this.particleDensities.push(0);
         }
 
- 
-        //apply gravity and predict
+        //apply predict
         for(let i = 0; i < this.numberOfParticles; i++) {
             let velocity = this.particleVelocities[i];
             let future: Vector = {x: velocity.x * PREDICTION_FACTOR, y: velocity.y * PREDICTION_FACTOR};
             let predicted = addVectors(this.particlePositions[i], future);
             this.predictedPositions[i] = {x: predicted.x, y: predicted.y};
         }
+
+        //grid update
+        this.updateGrid();
 
         //density calculation
         for(let i = 0; i < this.numberOfParticles; i++) {
@@ -164,7 +153,40 @@ export class Fluid {
     }
 
     //GRID
+    private updateGrid () {
+        for(let i = 0; i < this.numberOfParticles; i++) {
+            let cellPos = this.positionToCell(this.particlePositions[i]);
+            let cellKey = this.hashCell(cellPos);
+            this.gridSpatialLookup[i] = cellKey;
+            this.gridStartIndices[i] = Number.MAX_SAFE_INTEGER;
+        }
 
+        this.gridSpatialLookup.sort();
+
+        for(let i = 0; i < this.numberOfParticles; i++) {
+            let cellKey = this.gridSpatialLookup[i];
+            let prevKey = i == 0 ? Number.MAX_SAFE_INTEGER : this.gridStartIndices[cellKey];
+            if(cellKey != prevKey) {
+                this.gridStartIndices[cellKey] = i;
+            }
+        }
+    }
+
+    private positionToCell(position: Vector): {x: number, y: number} {
+        let cellX = position.x / SMOOTHING_RADIUS;
+        let cellY = position.y / SMOOTHING_RADIUS;
+        return {x: cellX, y: cellY};
+    }
+
+    private hashCell(cell: Vector): number {
+        let a: number = cell.x * 15823;
+        let b: number = cell.y * 9737333;
+        return a + b;
+    }
+
+    private getKeyFromHash(hash: number): number {
+        return hash % this.gridSpatialLookup.length;
+    }
 
     //PHYSICS 
     private checkCanvasBounds(index: number): void {
