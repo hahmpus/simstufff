@@ -8,8 +8,8 @@ const SpeedColorGradient = chroma.scale(['#2980b9', '#27ae60', '#f1c40f', '#c039
     //.domain([0, 0.25, 0.25, 1]);
 
 const GRAVITY = 9;
-const COLLISION_DAMPING = 0.9;
-const SMOOTHING_RADIUS = 20;
+const COLLISION_DAMPING = 0.5;
+const SMOOTHING_RADIUS = 50;
 const TARGET_DENSITY = 2;
 const PRESSURE_MULTIPLIER = 10;
 
@@ -31,7 +31,7 @@ export class Fluid {
     private particleDensities:  Array<number> = [];
 
     //optimization
-    private gridSpatialLookup: Array<number> = [];
+    private gridSpatialLookup: Array<{index: number, cellKey: number, cellHash: number}> = [];
     private gridStartIndices: Array<number> = [];
     private gridOffsets: Array<Vector> = [
         {x: -SMOOTHING_RADIUS, y: -SMOOTHING_RADIUS}, {x: 0, y: -SMOOTHING_RADIUS}, {x: SMOOTHING_RADIUS, y: -SMOOTHING_RADIUS},
@@ -48,10 +48,13 @@ export class Fluid {
         for(let i = 0; i < SIMULATIONS_PER_FRAME; i++) {
             this.simulationStep(ctx, deltaTime / SIMULATIONS_PER_FRAME);
         }
+        this.drawGrid(ctx, true);
         for(let i = 0; i < this.numberOfParticles; i++) {
-            this.drawParticle(ctx, i);
-            this.drawGradient(ctx, i);
+            this.drawParticle(ctx, i, 0);
+            this.drawSpatialLookup(ctx, i, 0);
+            //this.drawGradient(ctx, i);
             //this.drawDirection(ctx, i);
+
         }
     }
 
@@ -79,6 +82,7 @@ export class Fluid {
         //density calculation
         for(let i = 0; i < this.numberOfParticles; i++) {
             this.particleDensities[i] = this.calculateDensity(this.predictedPositions[i]);
+            //this.particleDensities[i] = this.neigbhourCalculateDensity(this.predictedPositions[i]);
         }
 
         //pressure calculation
@@ -101,13 +105,13 @@ export class Fluid {
 
     }
 
-    private drawParticle(ctx: CanvasRenderingContext2D, index: number) {
+    private drawParticle(ctx: CanvasRenderingContext2D, index: number, target?: number) {
         let vector = this.particlePositions[index];
         if (ctx != null) {
             ctx.save();
             ctx.globalAlpha = 1;
             ctx.beginPath();
-            ctx.fillStyle = this.speedBasedColor(index);
+            ctx.fillStyle = target == index ? 'hotpink' : this.speedBasedColor(index);
             ctx.arc(vector.x, vector.y, PARTICLE_RADIUS, 0, 2 * Math.PI);
             ctx.fill();
             ctx.restore();
@@ -146,6 +150,48 @@ export class Fluid {
         }
     }
 
+    private drawSpatialLookup(ctx: CanvasRenderingContext2D, index: number, target: number) {
+        let cell = this.particlePositions[index];
+        let cellPos = this.positionToCell(cell);
+
+        let startx = cellPos.x * SMOOTHING_RADIUS;
+        let starty = cellPos.y * SMOOTHING_RADIUS;
+
+        if (ctx != null && target == index) {
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(0, 255, 0, 0.7)";
+            for(let i = 0; i < this.gridOffsets.length; i++) {
+                let offset = this.gridOffsets[i];
+                ctx.rect(startx + offset.x, starty + offset.y, SMOOTHING_RADIUS, SMOOTHING_RADIUS);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+       
+    }
+
+    private drawGrid(ctx: CanvasRenderingContext2D, highlight: boolean = false) {
+        if(ctx != null) {
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+            for(let x = 0; x < constants.canvasWidth; x += SMOOTHING_RADIUS) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, constants.canvasHeight);
+            }
+            for(let y = 0; y < constants.canvasHeight; y += SMOOTHING_RADIUS) {
+                ctx.moveTo(0, y);
+                ctx.lineTo(constants.canvasWidth, y);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+
     private speedBasedColor(index: number) {
         let vector = this.particleVelocities[index];
         let speed = vectorMagnitude(vector) / 4;
@@ -155,17 +201,19 @@ export class Fluid {
     //GRID
     private updateGrid () {
         for(let i = 0; i < this.numberOfParticles; i++) {
-            let cellPos = this.positionToCell(this.particlePositions[i]);
-            let cellKey = this.hashCell(cellPos);
-            this.gridSpatialLookup[i] = cellKey;
-            this.gridStartIndices[i] = Number.MAX_SAFE_INTEGER;
+            let cellPos  = this.positionToCell(this.particlePositions[i]);
+            let cellHash = this.hashCell(cellPos);
+            let cellKey  = this.getKeyFromHash(cellHash);
+  
+            this.gridSpatialLookup[i] = {index: i, cellKey: cellKey, cellHash: cellHash};
+            this.gridStartIndices[i]  = Number.POSITIVE_INFINITY;
         }
 
         this.gridSpatialLookup.sort();
 
         for(let i = 0; i < this.numberOfParticles; i++) {
-            let cellKey = this.gridSpatialLookup[i];
-            let prevKey = i == 0 ? Number.MAX_SAFE_INTEGER : this.gridStartIndices[cellKey];
+            let cellKey = this.gridSpatialLookup[i].cellKey;
+            let prevKey = i == 0 ? Number.POSITIVE_INFINITY : this.gridStartIndices[cellKey - 1];
             if(cellKey != prevKey) {
                 this.gridStartIndices[cellKey] = i;
             }
@@ -173,8 +221,8 @@ export class Fluid {
     }
 
     private positionToCell(position: Vector): {x: number, y: number} {
-        let cellX = position.x / SMOOTHING_RADIUS;
-        let cellY = position.y / SMOOTHING_RADIUS;
+        let cellX = Math.floor(position.x / SMOOTHING_RADIUS);
+        let cellY = Math.floor(position.y / SMOOTHING_RADIUS);
         return {x: cellX, y: cellY};
     }
 
@@ -243,6 +291,42 @@ export class Fluid {
         return density;
     }
 
+    private neigbhourCalculateDensity(particle: Vector): number {
+        let density = 0;
+        let originCell = this.positionToCell(particle);
+        let sqrRadius  = SMOOTHING_RADIUS * SMOOTHING_RADIUS;
+
+        for(let i = 0; i < this.gridOffsets.length; i++) {
+            
+            let offset       = this.gridOffsets[i];
+            let offsetHash   = this.hashCell(addVectors(originCell, offset));
+            let offsetKey    = this.getKeyFromHash(offsetHash);
+            let currentIndex = this.gridStartIndices[offsetKey];
+
+            while(currentIndex < this.numberOfParticles) {
+                let indexData = this.gridSpatialLookup[currentIndex];
+                currentIndex++;
+
+                if(indexData.cellKey != offsetKey) break;
+                if(indexData.cellHash != offsetHash) continue;
+
+                let neigbhourIndex = indexData.index;
+                let neigbhourPosition = this.predictedPositions[neigbhourIndex];
+                let neigbhourOffset = subtractVectors(neigbhourPosition, particle);
+                let sqrDistance = vectorMagnitude(neigbhourOffset);
+
+                if(sqrDistance > sqrRadius) continue;
+
+                let dst = Math.sqrt(sqrDistance);
+                density += this.smoothingKernel(dst, SMOOTHING_RADIUS);
+            }
+
+        }
+
+
+        return density;
+    }
+
     private convertDensityToPressure(density: number): number {
         let densityError = density - TARGET_DENSITY;
         let pressure = densityError * PRESSURE_MULTIPLIER;
@@ -281,5 +365,6 @@ export class Fluid {
         }
 
         return pressureForce;
-    }   
+    }
+
 }
