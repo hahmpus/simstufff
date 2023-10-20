@@ -9,11 +9,11 @@ const SpeedColorGradient = chroma.scale(['#2980b9', '#27ae60', '#f1c40f', '#c039
 
 const GRAVITY = 9;
 const COLLISION_DAMPING = 0.5;
-const SMOOTHING_RADIUS = 50;
+const SMOOTHING_RADIUS = 20;
 const TARGET_DENSITY = 2;
 const PRESSURE_MULTIPLIER = 10;
 
-const PARTICLE_RADIUS = 3;
+const PARTICLE_RADIUS = 5;
 const SIMULATIONS_PER_FRAME = 5;
 const PREDICTION_FACTOR = 1 / SIMULATIONS_PER_FRAME;
 
@@ -81,8 +81,8 @@ export class Fluid {
 
         //density calculation
         for(let i = 0; i < this.numberOfParticles; i++) {
-            this.particleDensities[i] = this.calculateDensity(this.predictedPositions[i]);
-            //this.particleDensities[i] = this.neigbhourCalculateDensity(this.predictedPositions[i]);
+            //this.particleDensities[i] = this.calculateDensity(this.predictedPositions[i]);
+            this.particleDensities[i] = this.neigbhourCalculateDensity(this.predictedPositions[i]);
         }
 
         //pressure calculation
@@ -201,13 +201,15 @@ export class Fluid {
     //GRID
     private updateGrid () {
         for(let i = 0; i < this.numberOfParticles; i++) {
-            let cellPos  = this.positionToCell(this.particlePositions[i]);
+            let cellPos  = this.positionToCell(this.predictedPositions[i]);
             let cellHash = this.hashCell(cellPos);
             let cellKey  = this.getKeyFromHash(cellHash);
   
             this.gridSpatialLookup[i] = {index: i, cellKey: cellKey, cellHash: cellHash};
             this.gridStartIndices[i]  = Number.POSITIVE_INFINITY;
         }
+
+        //console.log(this.gridSpatialLookup)
 
         this.gridSpatialLookup.sort();
 
@@ -220,9 +222,10 @@ export class Fluid {
         }
     }
 
-    private positionToCell(position: Vector): {x: number, y: number} {
+    private positionToCell(position: Vector, log:boolean = false): {x: number, y: number} {
         let cellX = Math.floor(position.x / SMOOTHING_RADIUS);
         let cellY = Math.floor(position.y / SMOOTHING_RADIUS);
+        log && console.log('position to cell', position, cellX, cellY);
         return {x: cellX, y: cellY};
     }
 
@@ -311,6 +314,7 @@ export class Fluid {
                 if(indexData.cellHash != offsetHash) continue;
 
                 let neigbhourIndex = indexData.index;
+        
                 let neigbhourPosition = this.predictedPositions[neigbhourIndex];
                 let neigbhourOffset = subtractVectors(neigbhourPosition, particle);
                 let sqrDistance = vectorMagnitude(neigbhourOffset);
@@ -323,8 +327,9 @@ export class Fluid {
 
         }
 
+        // console.log(originCell)
 
-        return density;
+        return Math.random();
     }
 
     private convertDensityToPressure(density: number): number {

@@ -2,12 +2,12 @@ import './style.css';
 //import {Fluid} from './fluid';
 import { Fluid } from './fluid';
 
-var fluid = new Fluid(500);
+var fluid = new Fluid(100);
 
 var canvas: HTMLCanvasElement;
 var ctx: CanvasRenderingContext2D;
-let width =  1280;
-let height = 720;
+let width =  600;
+let height = 600;
 ;
 
 export const constants = {
