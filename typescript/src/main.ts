@@ -2,13 +2,14 @@ import './style.css';
 //import {Fluid} from './fluid';
 import { Fluid } from './fluid';
 
-var fluid = new Fluid(100);
 
 var canvas: HTMLCanvasElement;
 var ctx: CanvasRenderingContext2D;
-let width =  600;
-let height = 600;
-;
+let width =  400;
+let height = 400;
+
+
+var fluid = null as any;
 
 export const constants = {
   canvasWidth: width,
@@ -32,7 +33,7 @@ function loop() {
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, width, height);
   
-    fluid.runFrame(ctx, deltaTime);
+    fluid.runFrame(deltaTime);
   }
 }
 
@@ -52,5 +53,6 @@ function setupCanvas() {
   document.body.appendChild(container);
 
   ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+  fluid = new Fluid(500, ctx);
 }
 
