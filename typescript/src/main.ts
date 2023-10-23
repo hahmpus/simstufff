@@ -5,8 +5,8 @@ import { Fluid } from './fluid';
 
 var canvas: HTMLCanvasElement;
 var ctx: CanvasRenderingContext2D;
-let width =  400;
-let height = 400;
+let width =  1000;
+let height = 500;
 
 
 var fluid = null as any;
@@ -53,6 +53,6 @@ function setupCanvas() {
   document.body.appendChild(container);
 
   ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-  fluid = new Fluid(500, ctx);
+  fluid = new Fluid(1000, ctx);
 }
 

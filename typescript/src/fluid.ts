@@ -19,17 +19,17 @@ const SpeedColorGradient = chroma.scale(['#2980b9', '#27ae60', '#f1c40f', '#c039
     .mode('lrgb')
     //.domain([0, 0.25, 0.25, 1]);
 
-const GRAVITY = 9;
+const GRAVITY = 5;
 const COLLISION_DAMPING = 0.1;
-const SMOOTHING_RADIUS = 5;
+const SMOOTHING_RADIUS = 15;
 const TARGET_DENSITY = 2;
-const PRESSURE_MULTIPLIER = 50;
-const NEAR_PRESSURE_MULTIPLIER = 10;
-const VISCOSITY = 0.1;
+const PRESSURE_MULTIPLIER = 30;
+const NEAR_PRESSURE_MULTIPLIER = 30;
+const VISCOSITY = 5;
 
 const PARTICLE_RADIUS = 2;
-const SIMULATIONS_PER_FRAME = 5;
-const PREDICTION_FACTOR = 1 / SIMULATIONS_PER_FRAME;
+const SIMULATIONS_PER_FRAME = 2;
+const PREDICTION_FACTOR = 1 / 5;
 
 const FM = new FluidMaths(SMOOTHING_RADIUS);
 
@@ -71,10 +71,10 @@ export class Fluid {
         }
         //this.drawGrid(true);
         for(let i = 0; i < this.numberOfParticles; i++) {
-            this.drawParticle(i)
+            //this.drawParticle(i)
             //this.drawSpatialLookup(i, 0);
-            //this.drawGradient(i);
-            this.drawDirection(i);
+            this.drawGradient(i);
+            //this.drawDirection(i);
 
         }
     }
@@ -83,7 +83,7 @@ export class Fluid {
         //initialize particles
         if(this.particlePositions.length == 0) {
             for(let i = 0; i < this.numberOfParticles; i++) {
-                this.particlePositions.push({x: Math.random() * constants.canvasWidth / 4, y: Math.random() * constants.canvasHeight});
+                this.particlePositions.push({x: constants.canvasWidth * Math.random() / 4, y: constants.canvasHeight * Math.random()});
                 this.particleVelocities.push({x: 0, y: 0});
                 this.particleDensities.push({density: 0, nearDensity: 0});
             }
@@ -136,43 +136,40 @@ export class Fluid {
 
     private drawParticle(index: number, target?: number) {
         let vector = this.particlePositions[index];
-        if (this.canvasContext != null) {
-            this.canvasContext.save();
-            this.canvasContext.globalAlpha = 1;
-            this.canvasContext.beginPath();
-            this.canvasContext.fillStyle = target == index ? 'hotpink' : this.speedBasedColor(index);
-            this.canvasContext.arc(vector.x, vector.y, PARTICLE_RADIUS, 0, 2 * Math.PI);
-            this.canvasContext.fill();
-            this.canvasContext.restore();
-        }
+        
+        this.canvasContext.save();
+        this.canvasContext.globalAlpha = 1;
+        this.canvasContext.beginPath();
+        this.canvasContext.fillStyle = target == index ? 'hotpink' : this.speedBasedColor(index);
+        this.canvasContext.arc(vector.x, vector.y, PARTICLE_RADIUS, 0, 2 * Math.PI);
+        this.canvasContext.fill();
+        this.canvasContext.restore();
     }
 
     private drawGradient(index: number) {
         let vector = this.particlePositions[index];
-        if (this.canvasContext != null) {
-            this.canvasContext.save();
-            this.canvasContext.globalAlpha = 1;
-            this.canvasContext.beginPath();
-            this.canvasContext.fillStyle = "rgba(127, 0, 127, 0.1)";
-            this.canvasContext.arc(vector.x, vector.y, SMOOTHING_RADIUS, 0, 2 * Math.PI);
-            this.canvasContext.fill();
-            this.canvasContext.restore();
-        }
+   
+        this.canvasContext.save();
+        this.canvasContext.globalAlpha = 1;
+        this.canvasContext.beginPath();
+        this.canvasContext.fillStyle = "rgba(255, 0, 0, 0.05)";
+        this.canvasContext.arc(vector.x, vector.y, SMOOTHING_RADIUS, 0, 2 * Math.PI);
+        this.canvasContext.fill();
+        this.canvasContext.restore();
     }
 
     private drawDirection(index: number) {
         let vector = this.particlePositions[index];
         let next = this.predictedPositions[index];
-        if (this.canvasContext != null) {
-            this.canvasContext.save();
-            this.canvasContext.globalAlpha = 1;
-            this.canvasContext.beginPath();
-            this.canvasContext.strokeStyle = "white";
-            this.canvasContext.moveTo(vector.x, vector.y);
-            this.canvasContext.lineTo(next.x, next.y);
-            this.canvasContext.stroke();
-            this.canvasContext.restore();
-        }
+
+        this.canvasContext.save();
+        this.canvasContext.globalAlpha = 1;
+        this.canvasContext.beginPath();
+        this.canvasContext.strokeStyle = "white";
+        this.canvasContext.moveTo(vector.x, vector.y);
+        this.canvasContext.lineTo(next.x, next.y);
+        this.canvasContext.stroke();
+        this.canvasContext.restore();
     }
 
     private drawSpatialLookup(index: number, target: number) {
@@ -182,7 +179,7 @@ export class Fluid {
         let startx = cellPos.x * SMOOTHING_RADIUS;
         let starty = cellPos.y * SMOOTHING_RADIUS;
 
-        if (this.canvasContext != null && target == index) {
+        if (target == index) {
             this.canvasContext.save();
             this.canvasContext.globalAlpha = 1;
             this.canvasContext.beginPath();
@@ -198,22 +195,20 @@ export class Fluid {
     }
 
     private drawGrid(highlight: boolean = false) {
-        if(this.canvasContext != null) {
-            this.canvasContext.save();
-            this.canvasContext.globalAlpha = 1;
-            this.canvasContext.beginPath();
-            this.canvasContext.strokeStyle = "rgba(255, 255, 255, 0.1)";
-            for(let x = 0; x < constants.canvasWidth; x += SMOOTHING_RADIUS) {
-                this.canvasContext.moveTo(x, 0);
-                this.canvasContext.lineTo(x, constants.canvasHeight);
-            }
-            for(let y = 0; y < constants.canvasHeight; y += SMOOTHING_RADIUS) {
-                this.canvasContext.moveTo(0, y);
-                this.canvasContext.lineTo(constants.canvasWidth, y);
-            }
-            this.canvasContext.stroke();
-            this.canvasContext.restore();
+        this.canvasContext.save();
+        this.canvasContext.globalAlpha = 1;
+        this.canvasContext.beginPath();
+        this.canvasContext.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        for(let x = 0; x < constants.canvasWidth; x += SMOOTHING_RADIUS) {
+            this.canvasContext.moveTo(x, 0);
+            this.canvasContext.lineTo(x, constants.canvasHeight);
         }
+        for(let y = 0; y < constants.canvasHeight; y += SMOOTHING_RADIUS) {
+            this.canvasContext.moveTo(0, y);
+            this.canvasContext.lineTo(constants.canvasWidth, y);
+        }
+        this.canvasContext.stroke();
+        this.canvasContext.restore();      
     }
 
     private speedBasedColor(index: number) {
@@ -380,8 +375,6 @@ export class Fluid {
             if(sqrDistance > sqrRadius) return;
 
             let distance = Math.sqrt(sqrDistance);
-            // let offset = subtractVectors(particle, this.predictedPositions[neighbourIndex]);
-            // let distance = vectorMagnitude(offset);
 
             let dirToNeighbour = {x: 0, y: 0};
             if(distance > 0) {
@@ -402,8 +395,8 @@ export class Fluid {
             pressureForce.x += sharedPressure * dirToNeighbour.x * densitySlope / neighbourDensities.density;
             pressureForce.y += sharedPressure * dirToNeighbour.y * densitySlope / neighbourDensities.density;
            
-            pressureForce.x += sharedNearPressure * dirToNeighbour.x * nearDensitySlope / neighbourDensities.density;
-            pressureForce.y += sharedNearPressure * dirToNeighbour.y * nearDensitySlope / neighbourDensities.density;
+            pressureForce.x += sharedNearPressure * dirToNeighbour.x * nearDensitySlope / neighbourDensities.nearDensity;
+            pressureForce.y += sharedNearPressure * dirToNeighbour.y * nearDensitySlope / neighbourDensities.nearDensity;
         });
 
         return pressureForce;
