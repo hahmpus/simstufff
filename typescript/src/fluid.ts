@@ -41,7 +41,7 @@ export class Fluid {
     private smoothingRadius: number = 20;
     private targetDensity: number = 2;
     private pressureMultiplier: number = 25;
-    private nearPressureMultiplier: number = 0.1;
+    private nearPressureMultiplier: number = 1;
     private viscosity: number = 0.1;
 
     private particleRadius: number = 2;

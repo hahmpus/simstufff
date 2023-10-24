@@ -9,12 +9,86 @@
   </head>
   <body>
     <div id="sim-form">
+      
+      <!-- GRAVITY -->
       <label for="gravity">Gravity</label>
       <input 
-        type="number" 
+        type="range"
+        min="-20"
+        max="20"
+        step="1"
         id="gravity" 
-        value="window.setGravity()"
+        onchange="window.setGravity(this.value)"
       />
+
+      <!-- COLLISION DAMPING -->
+      <label for="damping">Collision Damping</label>
+      <input 
+        type="range"
+        min="0"
+        max="1"
+        step="0.01"
+        id="damping" 
+        onchange="window.setCollisionDamping(this.value)"
+      />
+
+      <!-- SMOOOTHING RADIUS -->
+      <label for="smoothing-radius">Smoothing Radius</label>
+      <input 
+        type="range"
+        min="1"
+        max="100"
+        step="1"
+        id="smoothing-radius" 
+        onchange="window.setSmoothingRadius(this.value)"
+      />
+
+      <!-- VISCOSITY -->
+      <label for="viscosity">Viscosity</label>
+      <input 
+        type="range"
+        min="0"
+        max="10"
+        step="0.1"
+        id="viscosity" 
+        onchange="window.setViscosity(this.value)"
+      />
+
+      <!-- PRESSURE MULTIPLIER -->
+      <label for="pressure-multiplier">Pressure Multiplier</label>
+      <input 
+        type="range"
+        min="0"
+        max="100"
+        step="1"
+        id="pressure-multiplier" 
+        onchange="window.setPressureMultiplier(this.value)"
+      />
+
+      <!-- NEAR PRESSEURE MULTIPLIER -->
+      <label for="near-pressure-multiplier">Near Pressure Multiplier</label>
+      <input 
+        type="range"
+        min="-100"
+        max="100"
+        step="1"
+        id="near-pressure-multiplier" 
+        onchange="window.setNearPressureMultiplier(this.value)"
+      />
+
+
     </div>
   </body>
 </html>
+
+<script>
+  //on document ready, set the default values
+  document.addEventListener("fluidReady", function(event) { 
+    document.getElementById("gravity").value = window.setGravity();
+    document.getElementById("damping").value = window.setCollisionDamping();
+    document.getElementById("smoothing-radius").value = window.setSmoothingRadius();
+    document.getElementById("viscosity").value = window.setViscosity();
+    document.getElementById("pressure-multiplier").value = window.setPressureMultiplier();
+    document.getElementById("near-pressure-multiplier").value = window.setNearPressureMultiplier();
+  });
+</script>

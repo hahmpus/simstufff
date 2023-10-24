@@ -87,9 +87,12 @@ function setupCanvas() {
 function setupControls(fluidInstance: Fluid) {
   (window as any).setGravity = (gravity: number) => fluidInstance.gravityEncap(gravity);
   (window as any).setCollisionDamping = (damping: number) => fluidInstance.collisionDampingEncap(damping);
-  (window as any).setSmoothinRadius = (radius: number) => fluidInstance.smoothingRadiusEncap(radius);
+  (window as any).setSmoothingRadius = (radius: number) => fluidInstance.smoothingRadiusEncap(radius);
   (window as any).setViscosity = (viscosity: number) => fluidInstance.viscosityEncap(viscosity);
   (window as any).setTargetDensity = (density: number) => fluidInstance.targetDensityEncap(density);
   (window as any).setPressureMultiplier = (density: number) => fluidInstance.pressureMultiplierEncap(density);
   (window as any).setNearPressureMultiplier = (density: number) => fluidInstance.nearPressureMultiplierEncap(density);
+
+  var event = new CustomEvent('fluidReady');
+  document.dispatchEvent(event);
 }
