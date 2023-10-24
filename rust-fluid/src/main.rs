@@ -5,8 +5,12 @@ use fluid::Fluid;
 
 fn main() {
 
-    let mut water = Fluid::new(10);
+    let fluid = Fluid::new(10);
 
-    water.test();
+    fluid.test();
+
+    loop {
+        fluid.run_frame(0.1);
+    }
 
 }

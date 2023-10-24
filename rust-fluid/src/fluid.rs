@@ -13,18 +13,31 @@ pub struct Fluid {
 
 impl Fluid {
 
-    pub fn new(number_of_particles: usize) -> Self {
+    pub fn new(particle_amount: usize) -> Self {
         Self {
-            number_of_particles,
-            particle_positions:  Vec::with_capacity(number_of_particles),
-            predicted_positions: Vec::with_capacity(number_of_particles),
-            particle_velocities: Vec::with_capacity(number_of_particles),
-            particle_densities:  Vec::with_capacity(number_of_particles),
+            number_of_particles: particle_amount,
+            particle_positions:  Vec::with_capacity(particle_amount),
+            predicted_positions: Vec::with_capacity(particle_amount),
+            particle_velocities: Vec::with_capacity(particle_amount),
+            particle_densities:  Vec::with_capacity(particle_amount),
         }
     }
 
     pub fn test(&self) {
         println!("test, {:?}", self.particle_positions);
+    }
+
+    pub fn run_frame(&self, delta_time: f32) {
+        //loop over all particles
+        self.simulation_step(delta_time);
+        
+        for i in 0..self.number_of_particles {
+            
+        }
+    }
+
+    fn simulation_step(&self, delta_time: f32) {
+        println!("simulation step, {:?}", delta_time);     
     }
 
 }
