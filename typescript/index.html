@@ -5,7 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SwimSim</title>
-    <script type="module" src="/src/main.ts"></script>
+    <!-- <script type="module" src="/src/main.ts"></script> -->
   </head>
   <body>
     <div id="sim-form">
@@ -80,7 +80,13 @@
     </div>
   </body>
 </html>
-
+<script type="module">
+  import init, { greet } from "./pkg/rust_wasm.js";
+  init().then(() => {
+    greet("WebAssembly");
+    //init_fluid();
+  });
+</script>
 <script>
   //on document ready, set the default values
   document.addEventListener("fluidReady", function(event) { 

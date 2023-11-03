@@ -1,0 +1,1 @@
+/home/hampud/code/simstufff/rust-wasm/target/wasm32-unknown-unknown/release/rust_wasm.wasm: /home/hampud/code/simstufff/rust-wasm/src/fluid.rs /home/hampud/code/simstufff/rust-wasm/src/lib.rs /home/hampud/code/simstufff/rust-wasm/src/vector.rs
